@@ -1,0 +1,14 @@
+numpy
+pandas
+matplotlib
+scipy
+networkx
+dimod
+geopandas
+shapely
+h3
+folium
+pulp
+qiskit
+qiskit-ibm-runtime
+qiskit-optimization
