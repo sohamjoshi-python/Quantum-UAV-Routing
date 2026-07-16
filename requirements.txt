@@ -12,3 +12,5 @@ pulp
 qiskit
 qiskit-ibm-runtime
 qiskit-optimization
+dwave_networkx
+minorminer

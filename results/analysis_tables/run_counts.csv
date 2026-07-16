@@ -1,0 +1,4 @@
+run_type,method,rows
+Classical,Classical,210
+ClassicalGreedy,ClassicalGreedy,210
+Quantum,Quantum (simulator),210

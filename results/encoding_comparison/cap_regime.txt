@@ -1,0 +1,21 @@
+CAP-REGIME ESTIMATE (is cap_per_request binding?)
+============================================================
+Interpretation: implied mean k_r is estimated from pairwise couplers assuming ~uniform k_r. If implied k_r >> cap, the cap binds and the coupler ratio understates the true (uncapped) pairwise disadvantage.
+
+n=   5 | cap=30 | mean pairs/req=    10.0 | implied mean k_r≈  5.0 | cap not binding
+n=  10 | cap=30 | mean pairs/req=    44.8 | implied mean k_r≈ 10.0 | cap not binding
+n=  20 | cap=30 | mean pairs/req=   190.0 | implied mean k_r≈ 20.0 | cap not binding
+n=  30 | cap=30 | mean pairs/req=   435.0 | implied mean k_r≈ 30.0 | CAP BINDS
+n=  40 | cap=30 | mean pairs/req=   618.5 | implied mean k_r≈ 35.7 | CAP BINDS
+n=  50 | cap=30 | mean pairs/req=   753.7 | implied mean k_r≈ 39.3 | CAP BINDS
+n=  60 | cap=30 | mean pairs/req=   854.9 | implied mean k_r≈ 41.9 | CAP BINDS
+n=  70 | cap=30 | mean pairs/req=   944.4 | implied mean k_r≈ 44.0 | CAP BINDS
+n=  80 | cap=30 | mean pairs/req=   983.1 | implied mean k_r≈ 44.8 | CAP BINDS
+n=  90 | cap=30 | mean pairs/req=  1053.0 | implied mean k_r≈ 46.4 | CAP BINDS
+n= 100 | cap=30 | mean pairs/req=  1099.6 | implied mean k_r≈ 47.4 | CAP BINDS
+n= 120 | cap=30 | mean pairs/req=  1185.1 | implied mean k_r≈ 49.2 | CAP BINDS
+n= 140 | cap=30 | mean pairs/req=  1267.1 | implied mean k_r≈ 50.8 | CAP BINDS
+n= 160 | cap=30 | mean pairs/req=  1362.0 | implied mean k_r≈ 52.7 | CAP BINDS
+n= 180 | cap=30 | mean pairs/req=  1406.5 | implied mean k_r≈ 53.5 | CAP BINDS
+
+CONCLUSION: The cap binds at larger sizes. State in the paper that the coupler ratio (e.g. ~10x at n=180) is a LOWER BOUND: even under aggressive per-request pruning to 30 trips, pairwise still has that many more couplers; the uncapped gap would be larger.

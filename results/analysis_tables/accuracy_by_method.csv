@@ -1,0 +1,46 @@
+num_requests,method,percent_serviced
+5,Classical,92.0
+5,ClassicalGreedy,92.0
+5,Quantum (simulator),84.0
+10,Classical,98.5
+10,ClassicalGreedy,94.5
+10,Quantum (simulator),81.5
+20,Classical,99.5
+20,ClassicalGreedy,91.5
+20,Quantum (simulator),87.75
+30,Classical,100.0
+30,ClassicalGreedy,98.83333333333334
+30,Quantum (simulator),96.00000000000001
+40,Classical,100.0
+40,ClassicalGreedy,95.25
+40,Quantum (simulator),93.5
+50,Classical,100.0
+50,ClassicalGreedy,100.0
+50,Quantum (simulator),96.4
+60,Classical,100.0
+60,ClassicalGreedy,96.0
+60,Quantum (simulator),93.5
+70,Classical,100.0
+70,ClassicalGreedy,100.0
+70,Quantum (simulator),94.85714285714286
+80,Classical,100.0
+80,ClassicalGreedy,96.375
+80,Quantum (simulator),95.0
+90,Classical,100.0
+90,ClassicalGreedy,100.0
+90,Quantum (simulator),95.33333333333333
+100,Classical,100.0
+100,ClassicalGreedy,92.9
+100,Quantum (simulator),92.2
+120,Classical,100.0
+120,ClassicalGreedy,93.49999999999999
+120,Quantum (simulator),94.16666666666666
+140,Classical,100.0
+140,ClassicalGreedy,93.5
+140,Quantum (simulator),93.71428571428571
+160,Classical,100.0
+160,ClassicalGreedy,94.5625
+160,Quantum (simulator),92.0
+180,Classical,100.0
+180,ClassicalGreedy,92.83333333333334
+180,Quantum (simulator),92.66666666666666

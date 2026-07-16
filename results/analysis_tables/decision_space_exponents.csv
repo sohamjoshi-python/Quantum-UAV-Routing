@@ -1,0 +1,4 @@
+series,exponent,prefactor,R2
+QUBO vars,1.625,3.8,0.9788
+QUBO couplers,1.659,6.491,0.9762
+ILP integer vars,2.739,0.677,0.9945

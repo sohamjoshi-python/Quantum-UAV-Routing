@@ -22,7 +22,10 @@ dependencies = [
   "pulp",
   "qiskit",
   "qiskit-ibm-runtime",
-  "qiskit-optimization"
+  "qiskit-optimization",
+  "dwave-samplers",
+  "python-dotenv",
+  "seaborn"
 ]
 
 [tool.setuptools]

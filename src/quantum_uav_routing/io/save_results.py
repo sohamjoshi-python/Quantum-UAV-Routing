@@ -25,6 +25,10 @@ CSV_COLUMNS = [
     "comp_qubo_min_nonzero_abs", "comp_qubo_dynamic_range", "qubo_logical_qubits",
     "time_greedy_build_candidates", "greedy_edges_total", "time_greedy_sort",
     "time_greedy_select", "time_greedy_total", "greedy_sort_work", "greedy_assignments",
+    "lambda_val", "M_val", "num_reads", "num_sweeps", "cost_alpha",
+    # Raw pre-cleanup QUBO infeasibility instrumentation (quantum rows only).
+    "raw_selected_trips", "raw_kept_trips", "raw_dropped_trips",
+    "raw_violation_rate", "raw_infeasible_instance",
 ]
 
 # Legacy notebook globals expected by final_trips.
@@ -50,11 +54,23 @@ def configure_runtime(**kwargs):
 
 
 def save_metrics_to_csv(filename, metrics_dict):
+    # Preserve any columns the metrics dict carries that are not in the known
+    # CSV_COLUMNS list, appended after the known columns in a stable order. This
+    # prevents silent data loss: previously, reindex(columns=CSV_COLUMNS) DROPPED
+    # any metric whose key was not whitelisted (e.g. new instrumentation columns),
+    # which is why raw_* infeasibility fields never reached the CSV.
+    extra_cols = [k for k in metrics_dict.keys() if k not in CSV_COLUMNS]
+    target_columns = list(CSV_COLUMNS) + extra_cols
+
     df_new = pd.DataFrame([metrics_dict])
-    df_new = df_new.reindex(columns=CSV_COLUMNS, fill_value=np.nan)
+    df_new = df_new.reindex(columns=target_columns, fill_value=np.nan)
     if os.path.exists(filename):
         df_existing = pd.read_csv(filename)
-        df_existing = df_existing.reindex(columns=CSV_COLUMNS, fill_value=np.nan)
+        # Union the existing file's columns too, so older rows that lack the new
+        # columns (or new rows that lack an old one) all align without dropping.
+        union_columns = list(dict.fromkeys(target_columns + list(df_existing.columns)))
+        df_existing = df_existing.reindex(columns=union_columns, fill_value=np.nan)
+        df_new = df_new.reindex(columns=union_columns, fill_value=np.nan)
         df_combined = pd.concat([df_existing, df_new], ignore_index=True)
     else:
         df_combined = df_new

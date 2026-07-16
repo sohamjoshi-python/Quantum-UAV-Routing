@@ -1,0 +1,5 @@
+metric,n_pairs,mean_annealing,mean_qaoa,mean_abs_diff,max_abs_diff
+percent_serviced,4,95.0,95.0,10.0,20.0
+avg_waiting_time,4,383.66,246.849,188.523,401.119
+avg_detour_factor,4,2.83,2.472,0.372,0.793
+vmt,4,1453.623,1449.742,408.95,810.138
