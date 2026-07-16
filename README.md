@@ -3,7 +3,6 @@
 Code and experiments accompanying the paper:
 
 > **Scaling QUBO-Based Hybrid Quantum Optimization for Emergency UAV Routing**
-> Soham Joshi.
 
 This repository studies a **two-stage hybrid quantum–classical pipeline** for
 routing a fleet of Unmanned Aerial Vehicles (UAVs) delivering emergency medical
@@ -239,7 +238,6 @@ If you use this code, please cite the accompanying paper:
 @inproceedings{joshi_quantum_uav_routing,
   title     = {Scaling QUBO-Based Hybrid Quantum Optimization for Emergency UAV Routing},
   author    = {Joshi, Soham},
-  booktitle = {IEEE Quantum Week},
   year      = {2026}
 }
 ```
