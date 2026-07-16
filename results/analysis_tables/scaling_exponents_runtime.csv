@@ -1,5 +1,7 @@
-method,column,exponent,C,R2
-Classical ILP,total_run_time,3.2179059508275394,2.2774039604638246e-05,0.9121096061164409
-ClassicalGreedy,time_greedy_total,2.6938060674161,5.463732422181057e-07,0.9654387773450599
-Quantum (simulator),total_run_time,1.6428510650797903,0.035010142698397105,0.9813556450806564
-Quantum (modeled D-Wave e2e),modeled_dwave_e2e,0.9990331104926478,0.0506900004302127,0.881870676059648
+method,column,exponent,C,R2,fit_range,note
+Classical ILP,total_run_time,3.2179059508275394,2.2774039604638246e-05,0.9121096061164409,,
+ClassicalGreedy,time_greedy_total,2.6938060674161,5.463732422181057e-07,0.9654387773450599,,
+Quantum (simulator),total_run_time,1.6428510650797903,0.035010142698397105,0.9813556450806564,,
+Quantum (modeled prep only),modeled_prep,1.4070800151178335,0.006998179865623704,0.9625810320427961,full,size-dependent term; QPU constant excluded
+Quantum (modeled D-Wave e2e),modeled_dwave_e2e,1.8517689251956249,0.0009804274452499572,0.9528810357742826,tail n>=60,asymptotic; QPU constant negligible here
+Quantum (modeled D-Wave e2e),modeled_dwave_e2e,1.1328599004478015,0.025890895704082827,0.9117078797654987,full,ARTIFACT: single power law fit to constant + power law; do not report -- use prep exponent or tail fit

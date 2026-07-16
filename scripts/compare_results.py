@@ -24,14 +24,28 @@ RESULTS_DIR = PROJECT_ROOT / "results"
 FIGURES_DIR = RESULTS_DIR / "analysis_figures"
 TABLES_DIR = RESULTS_DIR / "analysis_tables"
 
-# Notebook-style D-Wave QPU timing assumptions (for modeled quantum time).
-NUM_READS = 2000
+# D-Wave QPU timing assumptions (for modeled quantum time).
+#
+# NUM_READS must match the num_reads actually used by the reported runs
+# (scripts/run_experiment.py --num-reads, default 1000). All 210 reported
+# quantum instances in results/experiment_results.csv were produced with
+# num_reads=1000; the previous value of 2000 here was stale and silently
+# doubled the modeled QPU constant relative to the experiments and to the
+# timing proxy reported in the paper.
+NUM_READS = 1000
 ANNEAL_US = 50
 READOUT_US = 120
 QPU_DELAY_US = 20
 PROGRAMMING_MS = 10
 OTHER_OVERHEAD_MS = 5
 QUEUE_OVERHEAD_S = 0.0
+
+# Lower cutoff for large-n tail fits of the modeled pipeline. The modeled series
+# is (size-dependent preprocessing) + (size-independent QPU constant); below this
+# cutoff the constant dominates and flattens the curve, so a full-range power-law
+# fit is not interpretable. Chosen so the QPU constant is a small share of the
+# modeled total across the tail.
+TAIL_CUTOFF = 60
 
 
 def parse_args():
@@ -310,32 +324,93 @@ def plot_end_to_end_runtime(d_class, d_greedy, d_quant_sim, d_quant_real, figure
     if not d_quant_sim.empty:
         q = d_quant_sim.copy()
         qpu = dwave_qpu_time_seconds()
+        # NOTE: qubo_build_time is BY CONSTRUCTION time_min_cost_prep + time_qubo_gen
+        # (see quantum_solver.quantum_mwis_run), so it must NOT be summed alongside
+        # its own components -- doing so double-counts QUBO construction, which is
+        # exactly the term the paper identifies as the dominant bottleneck. We sum
+        # the disjoint stage timings only.
         overhead = (
             safe_series(q, "rtv_graph_build_time")
             + safe_series(q, "time_min_cost_prep")
             + safe_series(q, "time_qubo_gen")
-            + safe_series(q, "qubo_build_time")
             + safe_series(q, "time_compress")
             + safe_series(q, "time_decode")
             + safe_series(q, "time_vehicle_assignment")
             + safe_series(q, "time_metrics_calc")
             + safe_series(q, "time_struct_stats")
         )
+        q["modeled_prep"] = overhead
         q["modeled_dwave_e2e"] = overhead + qpu
         avg = avg_by_requests(q, "modeled_dwave_e2e")
+        avg_prep = avg_by_requests(q, "modeled_prep")
         if not avg.empty:
             x = avg["num_requests"].to_numpy()
             y = avg["modeled_dwave_e2e"].to_numpy()
             plt.scatter(x, y, marker="D", label="Quantum (modeled D-Wave e2e)")
-            a, C, r2 = fit_powerlaw(x, y)
-            if np.isfinite(a):
-                xfit = np.logspace(np.log10(x.min()), np.log10(x.max()), 200)
+
+            # The modeled series is (classical preprocessing) + (a size-INDEPENDENT
+            # QPU constant). Fitting a single power law to constant + power law in
+            # log-log space is not meaningful: the constant flattens the curve at
+            # small n and is negligible at large n, so least squares averages a flat
+            # segment with a steep one and reports an exponent that describes
+            # neither. We therefore report:
+            #   (a) the preprocessing exponent, which is the size-dependent term and
+            #       the honest characterization of how the pipeline scales; and
+            #   (b) a large-n tail fit of the modeled series, which recovers the
+            #       asymptotic behavior once the constant stops dominating.
+            # The full-range fit is still emitted, but flagged as an artifact.
+            xp = avg_prep["num_requests"].to_numpy()
+            yp = avg_prep["modeled_prep"].to_numpy()
+            a_prep, C_prep, r2_prep = fit_powerlaw(xp, yp)
+            if np.isfinite(a_prep):
+                xfit = np.logspace(np.log10(xp.min()), np.log10(xp.max()), 200)
                 plt.plot(
                     xfit,
-                    C * (xfit**a),
-                    linestyle="--",
-                    label=f"Modeled D-Wave fit ~ n^{a:.2f} (R²={r2:.3f})",
+                    C_prep * (xfit**a_prep),
+                    linestyle=":",
+                    label=f"Modeled prep fit ~ n^{a_prep:.2f} (R²={r2_prep:.3f})",
                 )
+                fit_rows.append(
+                    {
+                        "method": "Quantum (modeled prep only)",
+                        "column": "modeled_prep",
+                        "exponent": a_prep,
+                        "C": C_prep,
+                        "R2": r2_prep,
+                        "fit_range": "full",
+                        "note": "size-dependent term; QPU constant excluded",
+                    }
+                )
+
+            # Large-n tail fit of the modeled series.
+            tail_mask = x >= TAIL_CUTOFF
+            if tail_mask.sum() >= 3:
+                a_t, C_t, r2_t = fit_powerlaw(x[tail_mask], y[tail_mask])
+                if np.isfinite(a_t):
+                    xfit = np.logspace(
+                        np.log10(x[tail_mask].min()), np.log10(x[tail_mask].max()), 200
+                    )
+                    plt.plot(
+                        xfit,
+                        C_t * (xfit**a_t),
+                        linestyle="--",
+                        label=f"Modeled D-Wave tail fit (n>={TAIL_CUTOFF}) ~ n^{a_t:.2f} (R²={r2_t:.3f})",
+                    )
+                    fit_rows.append(
+                        {
+                            "method": "Quantum (modeled D-Wave e2e)",
+                            "column": "modeled_dwave_e2e",
+                            "exponent": a_t,
+                            "C": C_t,
+                            "R2": r2_t,
+                            "fit_range": f"tail n>={TAIL_CUTOFF}",
+                            "note": "asymptotic; QPU constant negligible here",
+                        }
+                    )
+
+            # Full-range fit retained for transparency, explicitly flagged.
+            a, C, r2 = fit_powerlaw(x, y)
+            if np.isfinite(a):
                 fit_rows.append(
                     {
                         "method": "Quantum (modeled D-Wave e2e)",
@@ -343,6 +418,11 @@ def plot_end_to_end_runtime(d_class, d_greedy, d_quant_sim, d_quant_real, figure
                         "exponent": a,
                         "C": C,
                         "R2": r2,
+                        "fit_range": "full",
+                        "note": (
+                            "ARTIFACT: single power law fit to constant + power law; "
+                            "do not report -- use prep exponent or tail fit"
+                        ),
                     }
                 )
 
@@ -446,11 +526,13 @@ def plot_quantum_runtime_breakdown(d_quant_sim, figures_dir, tables_dir):
 
     q = d_quant_sim.copy()
     q["dwave_qpu_time"] = dwave_qpu_time_seconds()
+    # qubo_build_time == time_min_cost_prep + time_qubo_gen by construction
+    # (quantum_solver.quantum_mwis_run), so summing it alongside its components
+    # double-counts QUBO construction. Sum disjoint stages only.
     q["prep_build_time"] = (
         safe_series(q, "rtv_graph_build_time")
         + safe_series(q, "time_min_cost_prep")
         + safe_series(q, "time_qubo_gen")
-        + safe_series(q, "qubo_build_time")
         + safe_series(q, "time_compress")
     )
     q["output_time"] = (
