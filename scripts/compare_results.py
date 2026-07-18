@@ -10,6 +10,7 @@ Usage:
 from __future__ import annotations
 
 import argparse
+import sys
 from pathlib import Path
 
 import matplotlib.pyplot as plt
@@ -17,6 +18,18 @@ import numpy as np
 import pandas as pd
 import seaborn as sns
 from scipy import stats
+
+# Console output contains non-ASCII characters (e.g. lambda, +/-, R-squared).
+# On Windows the default console encoding (cp1252) cannot encode these and
+# raises UnicodeEncodeError mid-run. Force UTF-8 on the standard streams where
+# supported so the script prints its summaries on every platform.
+for _stream in (sys.stdout, sys.stderr):
+    _reconfigure = getattr(_stream, "reconfigure", None)
+    if _reconfigure is not None:
+        try:
+            _reconfigure(encoding="utf-8")
+        except (ValueError, OSError):
+            pass
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_CSV = PROJECT_ROOT / "results" / "experiment_results.csv"
@@ -222,11 +235,17 @@ def plot_decision_dimensions(d_class, d_greedy, d_quant, figures_dir: Path, tabl
         if not sim.empty:
             qubo_src = sim
 
-    qubo_vars = avg_by_requests(qubo_src, "base_qubo_vars")
     qubo_coup = avg_by_requests(qubo_src, "base_qubo_couplers")
-    ilp_int = avg_by_requests(d_class, "ilp_num_integer_vars")
     ilp_nnz = avg_by_requests(d_class, "ilp_num_nonzero_coeffs")
-    greedy_work = avg_by_requests(d_greedy, "greedy_sort_work")
+
+    # Split each series by fleet ratio (V = R and V = R/2), matching the
+    # percent-serviced plot: same color per series, with marker / line style
+    # distinguishing the two ratios. Each ratio is fit with its own power law.
+    ratio_styles = [
+        ("V = R", lambda f: f[f["num_requests"] == f["num_vehicles"]], "o", "-"),
+        ("V = R/2", lambda f: f[f["num_requests"] == 2 * f["num_vehicles"]], "s", "--"),
+    ]
+    color_cycle = plt.rcParams["axes.prop_cycle"].by_key()["color"]
 
     plt.figure(figsize=(7, 6))
     ax = plt.gca()
@@ -238,21 +257,34 @@ def plot_decision_dimensions(d_class, d_greedy, d_quant, figures_dir: Path, tabl
     ax.grid(alpha=0.25)
 
     rows = []
-    for label, frame, col, marker in [
-        ("QUBO vars", qubo_vars, "base_qubo_vars", "o"),
-        ("ILP integer vars", ilp_int, "ilp_num_integer_vars", "s"),
-        ("Greedy sort work", greedy_work, "greedy_sort_work", "^"),
-    ]:
-        if frame.empty:
+    for idx, (label, src, col) in enumerate([
+        ("QUBO vars", qubo_src, "base_qubo_vars"),
+        ("ILP integer vars", d_class, "ilp_num_integer_vars"),
+        ("Greedy sort work", d_greedy, "greedy_sort_work"),
+    ]):
+        if src.empty or col not in src.columns or "num_vehicles" not in src.columns:
             continue
-        x = frame["num_requests"].to_numpy()
-        y = frame[col].to_numpy()
-        a, C, r2 = fit_powerlaw(x, y)
-        ax.scatter(x, y, marker=marker, label=label)
-        if np.isfinite(a):
-            xfit = np.logspace(np.log10(x.min()), np.log10(x.max()), 200)
-            ax.plot(xfit, C * (xfit**a), label=f"{label} fit ~ n^{a:.2f} (R²={r2:.3f})")
-            rows.append({"series": label, "exponent": a, "C": C, "R2": r2})
+        color = color_cycle[idx % len(color_cycle)]
+        for ratio_label, ratio_filter, marker, linestyle in ratio_styles:
+            frame = avg_by_requests(ratio_filter(src), col)
+            if frame.empty:
+                continue
+            x = frame["num_requests"].to_numpy()
+            y = frame[col].to_numpy()
+            ax.scatter(x, y, marker=marker, color=color, label=f"{label} ({ratio_label})")
+            a, C, r2 = fit_powerlaw(x, y)
+            if np.isfinite(a):
+                xfit = np.logspace(np.log10(x.min()), np.log10(x.max()), 200)
+                ax.plot(
+                    xfit,
+                    C * (xfit**a),
+                    color=color,
+                    linestyle=linestyle,
+                    label=f"{label} ({ratio_label}) fit ~ n^{a:.2f} (R²={r2:.3f})",
+                )
+                rows.append(
+                    {"series": f"{label} ({ratio_label})", "exponent": a, "C": C, "R2": r2}
+                )
     ax.legend(fontsize=8)
     savefig(figures_dir / "01_decision_variable_count.png")
 
@@ -615,26 +647,46 @@ def plot_service_quality(d_class, d_greedy, d_quant_sim, d_quant_real, figures_d
         piv = summary.pivot(index="num_requests", columns="method", values="percent_serviced")
         piv.to_csv(tables_dir / "percent_serviced_pivot.csv")
 
-    # % serviced with SEM
-    plt.figure(figsize=(7, 5))
+    # % serviced with SEM, split by fleet ratio (V = R and V = R/2).
+    # Each scenario pairs a vehicle count v with requests {v, 2v}, so we draw two
+    # curves per model: one where num_vehicles == num_requests and one where
+    # num_vehicles == num_requests / 2. Same color per model; the two ratios are
+    # distinguished by line style / marker.
+    ratio_styles = [
+        ("V = R", lambda f: f[f["num_requests"] == f["num_vehicles"]], "-o"),
+        ("V = R/2", lambda f: f[f["num_requests"] == 2 * f["num_vehicles"]], "--s"),
+    ]
+    color_cycle = plt.rcParams["axes.prop_cycle"].by_key()["color"]
+
+    plt.figure(figsize=(8, 5))
     ax = plt.gca()
     ax.set_ylim(0, 110)
-    ax.set_title("Requests vs % Serviced (mean ± SEM)")
+    ax.set_title("Requests vs % Serviced by fleet ratio (mean ± SEM)")
     ax.set_xlabel("Number of Requests")
     ax.set_ylabel("% Serviced")
     ax.grid(alpha=0.25)
-    for name, frame in series:
+    for idx, (name, frame) in enumerate(series):
         if frame.empty or "percent_serviced" not in frame.columns:
             continue
-        data = avg_by_requests_sem(frame, "percent_serviced")
-        ax.errorbar(
-            data["num_requests"],
-            data["percent_serviced_mean"],
-            yerr=data["percent_serviced_sem"],
-            fmt="-o",
-            capsize=3,
-            label=name,
-        )
+        if "num_vehicles" not in frame.columns:
+            continue
+        color = color_cycle[idx % len(color_cycle)]
+        for ratio_label, ratio_filter, fmt in ratio_styles:
+            sub = ratio_filter(frame)
+            if sub.empty:
+                continue
+            data = avg_by_requests_sem(sub, "percent_serviced")
+            if data.empty:
+                continue
+            ax.errorbar(
+                data["num_requests"],
+                data["percent_serviced_mean"],
+                yerr=data["percent_serviced_sem"],
+                fmt=fmt,
+                capsize=3,
+                color=color,
+                label=f"{name} ({ratio_label})",
+            )
     ax.legend(fontsize=8)
     savefig(figures_dir / "10_percent_serviced.png")
 
