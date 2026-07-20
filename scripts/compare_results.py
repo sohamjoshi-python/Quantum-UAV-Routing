@@ -87,7 +87,7 @@ def parse_args():
 def savefig(path: Path):
     path.parent.mkdir(parents=True, exist_ok=True)
     plt.tight_layout()
-    plt.savefig(path, dpi=150, bbox_inches="tight")
+    plt.savefig(path, dpi=300, bbox_inches="tight")
     plt.close()
     print(f"  saved {path}")
 

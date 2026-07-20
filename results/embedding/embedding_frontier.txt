@@ -1,6 +1,6 @@
 EMBEDDING FRONTIER (honest timeout handling)
 =======================================================
-Embedding budget assumed: 6000s per attempt.
+Embedding budget assumed: 120s per attempt.
 A failure at/near this wall is TIMEOUT (inconclusive), not proof the
 QUBO is unembeddable.
 
@@ -8,20 +8,20 @@ QUBO is unembeddable.
   n=   5: 5 embedded
   n=  10: 10 embedded
   n=  20: 10 embedded
-  n=  30: 5 genuine-fail
-  n=  40: 5 genuine-fail
+  n=  30: 5 TIMEOUT(inconclusive)
+  n=  40: 5 TIMEOUT(inconclusive)
 
 [pairwise]
   n=   5: 5 embedded
   n=  10: 10 embedded
   n=  20: 10 embedded
-  n=  30: 5 genuine-fail
-  n=  40: 5 genuine-fail
+  n=  30: 5 TIMEOUT(inconclusive)
+  n=  40: 5 TIMEOUT(inconclusive)
 
 SUMMARY
 ----------------------------------------
-merge_tree: embeds through n=20; genuine failure at n=[30, 40]
-pairwise: embeds through n=20; genuine failure at n=[30, 40]
+merge_tree: embeds through n=20; n>=30 INCONCLUSIVE (timeout -- raise --timeout/--tries to resolve)
+pairwise: embeds through n=20; n>=30 INCONCLUSIVE (timeout -- raise --timeout/--tries to resolve)
 
 NOTE: Do NOT report timeout_inconclusive sizes as 'does not fit on
 hardware'. Re-run those sizes with a larger budget (e.g. --timeout

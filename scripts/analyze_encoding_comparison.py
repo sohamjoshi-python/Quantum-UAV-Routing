@@ -175,7 +175,7 @@ def make_figure(table: pd.DataFrame, fig_path: Path):
     ax2.legend(); ax2.grid(True, alpha=0.3)
 
     fig.tight_layout()
-    fig.savefig(fig_path, dpi=150)
+    fig.savefig(fig_path, dpi=300)
     print(f"Figure saved to {fig_path}")
 
 
