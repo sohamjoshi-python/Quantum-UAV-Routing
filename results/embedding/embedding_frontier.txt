@@ -8,15 +8,35 @@ QUBO is unembeddable.
   n=   5: 5 embedded
   n=  10: 10 embedded
   n=  20: 10 embedded
-  n=  30: 5 TIMEOUT(inconclusive)
-  n=  40: 5 TIMEOUT(inconclusive)
+  n=  30: 10 TIMEOUT(inconclusive)
+  n=  40: 10 TIMEOUT(inconclusive)
+  n=  50: 5 TIMEOUT(inconclusive)
+  n=  60: 10 TIMEOUT(inconclusive)
+  n=  70: 5 TIMEOUT(inconclusive)
+  n=  80: 10 TIMEOUT(inconclusive)
+  n=  90: 5 TIMEOUT(inconclusive)
+  n= 100: 5 TIMEOUT(inconclusive)
+  n= 120: 5 TIMEOUT(inconclusive)
+  n= 140: 5 TIMEOUT(inconclusive)
+  n= 160: 5 TIMEOUT(inconclusive)
+  n= 180: 5 TIMEOUT(inconclusive)
 
 [pairwise]
   n=   5: 5 embedded
   n=  10: 10 embedded
   n=  20: 10 embedded
-  n=  30: 5 TIMEOUT(inconclusive)
-  n=  40: 5 TIMEOUT(inconclusive)
+  n=  30: 10 TIMEOUT(inconclusive)
+  n=  40: 10 TIMEOUT(inconclusive)
+  n=  50: 5 TIMEOUT(inconclusive)
+  n=  60: 10 TIMEOUT(inconclusive)
+  n=  70: 5 TIMEOUT(inconclusive)
+  n=  80: 10 TIMEOUT(inconclusive)
+  n=  90: 5 TIMEOUT(inconclusive)
+  n= 100: 5 TIMEOUT(inconclusive)
+  n= 120: 5 TIMEOUT(inconclusive)
+  n= 140: 5 TIMEOUT(inconclusive)
+  n= 160: 5 TIMEOUT(inconclusive)
+  n= 180: 5 TIMEOUT(inconclusive)
 
 SUMMARY
 ----------------------------------------

@@ -68,8 +68,10 @@ from quantum_uav_routing.quantum.penalty_scaling import derive_M, infer_nu_max  
 from quantum_uav_routing.quantum.quantum_solver import (  # noqa: E402
     generate_qubo,
     generate_qubo_pairwise,
+    order_trips_by_decreasing_reward,
     qubo_stats_from_dict,
     raw_infeasibility_from_selection,
+    upper_triangle_qubo,
 )
 from quantum_uav_routing.rtv import build_rtv_graph as build_rtv  # noqa: E402
 from quantum_uav_routing.rtv import trip_builder  # noqa: E402
@@ -160,9 +162,10 @@ def minimal_trip_costs(module_trip_costs):
 
 
 def qubo_energy(Q: dict, sample: dict) -> float:
-    if not Q:
+    qubo = upper_triangle_qubo(Q)
+    if not qubo:
         return 0.0
-    bqm = dimod.BinaryQuadraticModel.from_qubo(Q)
+    bqm = dimod.BinaryQuadraticModel.from_qubo(qubo)
     full = {v: int(sample.get(v, 0)) for v in bqm.variables}
     return float(bqm.energy(full))
 
@@ -171,7 +174,10 @@ def anneal(Q: dict, num_reads: int, num_sweeps: int, seed: int) -> tuple[dict, f
     n = max(max(i, j) for (i, j) in Q.keys()) + 1
     sampler = SimulatedAnnealingSampler()
     sampleset = sampler.sample_qubo(
-        Q, num_reads=num_reads, num_sweeps=num_sweeps, seed=seed
+        upper_triangle_qubo(Q),
+        num_reads=num_reads,
+        num_sweeps=num_sweeps,
+        seed=seed,
     )
     best = sampleset.first.sample
     sample = {i: int(best.get(i, 0)) for i in range(n)}
@@ -179,12 +185,22 @@ def anneal(Q: dict, num_reads: int, num_sweeps: int, seed: int) -> tuple[dict, f
     return sample, energy
 
 
-def greedy_cleanup(all_vars, sample: dict):
+def greedy_cleanup(
+    all_vars,
+    sample: dict,
+    trip_costs=None,
+    ignore_cost=0.0,
+    cost_alpha=1.0,
+):
     selected = [
         all_vars[i]
         for i, bit in sample.items()
         if bit == 1 and i < len(all_vars) and isinstance(all_vars[i], frozenset)
     ]
+    if trip_costs is not None:
+        selected = order_trips_by_decreasing_reward(
+            selected, trip_costs, ignore_cost, cost_alpha
+        )
     kept = []
     covered = set()
     for tk in selected:
@@ -257,13 +273,22 @@ def solve_encoding(
     num_reads: int,
     num_sweeps: int,
     seed: int,
+    trip_costs=None,
+    ignore_cost=0.0,
+    cost_alpha=1.0,
 ) -> dict:
     t0 = time.perf_counter()
     sample, reported_energy = anneal(Q, num_reads, num_sweeps, seed)
     t_anneal = time.perf_counter() - t0
 
     energy = qubo_energy(Q, sample)
-    selected, kept = greedy_cleanup(all_vars, sample)
+    selected, kept = greedy_cleanup(
+        all_vars,
+        sample,
+        trip_costs=trip_costs,
+        ignore_cost=ignore_cost,
+        cost_alpha=cost_alpha,
+    )
     infeas = raw_infeasibility_from_selection(selected, kept)
     metrics = hungarian_and_metrics(kept, requests, vehicles)
     stats = qubo_stats_from_dict(Q)
@@ -542,6 +567,9 @@ def run_one_instance(
             args.num_reads,
             args.num_sweeps,
             seed,
+            trip_costs=tcosts,
+            ignore_cost=args.lambda_val,
+            cost_alpha=args.cost_alpha,
         )
         row.update(common)
         append_row(row, full_csv)
@@ -566,6 +594,9 @@ def run_one_instance(
             args.num_reads,
             args.num_sweeps,
             seed,
+            trip_costs=tcosts,
+            ignore_cost=args.lambda_val,
+            cost_alpha=args.cost_alpha,
         )
         row.update(common)
         append_row(row, full_csv)

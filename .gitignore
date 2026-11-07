@@ -59,6 +59,11 @@ results/experiment_results_capacity3.csv
 results/experiment_results_capacity3_per_request.csv
 
 # ---------------------------------------------------------------------------
+# Local paper-revision notes (not part of the companion repo)
+# ---------------------------------------------------------------------------
+PAPER_REVISIONS.md
+
+# ---------------------------------------------------------------------------
 # OS / editor cruft
 # ---------------------------------------------------------------------------
 .DS_Store

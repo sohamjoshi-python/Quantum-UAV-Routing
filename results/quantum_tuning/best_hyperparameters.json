@@ -1,71 +1,57 @@
 {
   "ranked_by": "mean_percent_serviced",
-  "best_lambda_val": 5000.0,
-  "best_M_val": 10000.0,
-  "best_mean_percent_serviced": 91.41832010582011,
-  "best_sem_percent_serviced": 0.6371625994829005,
-  "best_n_runs": 264,
-  "n_configs_tied_within_1sem": 12,
+  "best_lambda_val": 2500.0,
+  "best_M_val": 25000.0,
+  "best_mean_percent_serviced": 92.06733480091144,
+  "best_sem_percent_serviced": 0.5047784269963778,
+  "best_n_runs": 411,
+  "n_configs_tied_within_1sem": 8,
   "tied_configs": [
     {
-      "lambda_val": 5000.0,
-      "M_val": 10000.0,
-      "mean_percent_serviced": 91.41832010582011
-    },
-    {
-      "lambda_val": 20000.0,
-      "M_val": 40000.0,
-      "mean_percent_serviced": 91.29704785954786
-    },
-    {
-      "lambda_val": 40000.0,
-      "M_val": 200000.0,
-      "mean_percent_serviced": 91.26773689273689
-    },
-    {
-      "lambda_val": 10000.0,
-      "M_val": 20000.0,
-      "mean_percent_serviced": 91.19032587782588
-    },
-    {
-      "lambda_val": 40000.0,
-      "M_val": 80000.0,
-      "mean_percent_serviced": 91.07064694564696
-    },
-    {
-      "lambda_val": 10000.0,
-      "M_val": 50000.0,
-      "mean_percent_serviced": 91.04803992303992
-    },
-    {
-      "lambda_val": 20000.0,
-      "M_val": 100000.0,
-      "mean_percent_serviced": 91.03087421837422
-    },
-    {
       "lambda_val": 2500.0,
-      "M_val": 5000.0,
-      "mean_percent_serviced": 90.97079248366013
-    },
-    {
-      "lambda_val": 5000.0,
       "M_val": 25000.0,
-      "mean_percent_serviced": 90.87277537277538
-    },
-    {
-      "lambda_val": 20000.0,
-      "M_val": 200000.0,
-      "mean_percent_serviced": 90.86483886483886
+      "mean_percent_serviced": 92.06733480091144
     },
     {
       "lambda_val": 40000.0,
       "M_val": 400000.0,
-      "mean_percent_serviced": 90.85960798460799
+      "mean_percent_serviced": 92.04573629938594
     },
     {
-      "lambda_val": 2500.0,
-      "M_val": 25000.0,
-      "mean_percent_serviced": 90.84992242511039
+      "lambda_val": 20000.0,
+      "M_val": 200000.0,
+      "mean_percent_serviced": 92.04121770362646
+    },
+    {
+      "lambda_val": 5000.0,
+      "M_val": 50000.0,
+      "mean_percent_serviced": 92.00713513304754
+    },
+    {
+      "lambda_val": 40000.0,
+      "M_val": 200000.0,
+      "mean_percent_serviced": 91.76959989186267
+    },
+    {
+      "lambda_val": 20000.0,
+      "M_val": 100000.0,
+      "mean_percent_serviced": 91.69702236125593
+    },
+    {
+      "lambda_val": 10000.0,
+      "M_val": 100000.0,
+      "mean_percent_serviced": 91.67833005059283
+    },
+    {
+      "lambda_val": 10000.0,
+      "M_val": 50000.0,
+      "mean_percent_serviced": 91.6572722357394
     }
-  ]
+  ],
+  "violation_optimal": {
+    "lambda_val": 2500.0,
+    "M_val": 25000.0,
+    "mean_raw_violation_rate": 0.009043320848792445,
+    "note": "This is the config that MINIMIZES pre-cleanup QUBO infeasibility, i.e. what M actually controls. May differ from the accuracy-optimal config because the classical cleanup + Hungarian steps rectify much of the raw infeasibility before accuracy is measured."
+  }
 }

@@ -190,6 +190,7 @@ def _solve_pairwise(QS, trips, trip_costs, requests, vehicles,
     bitstring = QS.solve_qubo_qiskit_real(Q, reps=2, real=False)
     raw = [all_vars[i] for i, v in bitstring.items() if v == 1]
     sel = [tk for tk in raw if isinstance(tk, frozenset)]
+    sel = QS.order_trips_by_decreasing_reward(sel, min_cost, ignore_cost, cost_alpha)
     final, covered = [], set()
     for tk in sel:
         if not (tk & covered):

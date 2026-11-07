@@ -29,6 +29,56 @@ H3_RESOLUTION = 7
 BUFFER_KM = 1
 GRID_STEP_DEGREES = 0.003  # ~300m
 
+# Discrete cruise altitudes in feet. Pickups, drop-offs, and vehicle starts
+# are on the ground layer; shortest paths may climb through the others.
+ALTITUDES_FT = (0, 50, 100, 200, 400)
+GROUND_ALTITUDE_FT = 0
+
+
+def node_3d_id(node_id, altitude):
+    return f"{node_id}_z{altitude}"
+
+
+def ground_level_node_map(node_ids):
+    """Map each 2D node to its ground-level 3D copy (``<id>_z0``).
+
+    Pickups, drop-offs, and vehicle starts are at ground level. Cruise
+    altitude is chosen by the shortest-path search, which may use 50, 100,
+    200, or 400 ft.
+
+    Do not build this map with ``DataFrame.set_index(...).to_dict()``.
+    Every altitude copy shares ``original_node_id``, and ``to_dict`` keeps
+    only the last copy, which is ``_z400``.
+    """
+    return {
+        node_id: node_3d_id(node_id, GROUND_ALTITUDE_FT)
+        for node_id in node_ids
+    }
+
+
+def ensure_ground_level_mapping(node_ids, mapping_path):
+    """Return the ground-level map and replace a stale ``_z400`` mapping file."""
+    mapping = ground_level_node_map(node_ids)
+    path = str(mapping_path)
+    stale = True
+    if os.path.isfile(path):
+        existing = pd.read_csv(path)
+        if (
+            "node_3d_id" in existing.columns
+            and len(existing) == len(mapping)
+            and existing["node_3d_id"].astype(str).str.endswith("_z0").all()
+        ):
+            stale = False
+    if stale:
+        parent = os.path.dirname(path)
+        if parent:
+            os.makedirs(parent, exist_ok=True)
+        pd.DataFrame(
+            list(mapping.items()),
+            columns=["original_node_id", "node_3d_id"],
+        ).to_csv(path, index=False)
+    return mapping
+
 
 def _download_repo_archive() -> bytes:
     """Download the GMNS dataset repository from GitHub as a zip archive."""
@@ -381,14 +431,14 @@ def convert_to_3d(network_name, input_dir):
   node_df = pd.read_csv(f"{input_dir}/node.csv", encoding='latin1', low_memory=False)
   link_df = pd.read_csv(f"{input_dir}/link.csv", encoding='latin1', low_memory=False)
 
-  altitudes = [0, 50, 100, 200, 400]
+  altitudes = list(ALTITUDES_FT)
 
   node_3d_rows = []
 
   for _, row in node_df.iterrows():
       for z in altitudes:
           node_3d_rows.append({
-              "node_id": f"{row.node_id}_z{z}",
+              "node_id": node_3d_id(row.node_id, z),
               "original_node_id": row.node_id,   # keep for reference
               "zone_id": row.zone_id,             # still valid
               "x_coord": row.x_coord,
@@ -403,8 +453,8 @@ def convert_to_3d(network_name, input_dir):
       for z in altitudes:
           link_3d_rows.append({
               "link_id": f"{row.link_id}_z{z}",
-              "from_node_id": f"{row.from_node_id}_z{z}",
-              "to_node_id": f"{row.to_node_id}_z{z}",
+              "from_node_id": node_3d_id(row.from_node_id, z),
+              "to_node_id": node_3d_id(row.to_node_id, z),
               "dir_flag": row.dir_flag,
               "length": row.length,
               "free_speed": 12+0.25*z,
@@ -421,8 +471,8 @@ def convert_to_3d(network_name, input_dir):
 
           link_3d_rows.append({
               "link_id": f"V_{row.node_id}_{z1}_{z2}",
-              "from_node_id": f"{row.node_id}_z{z1}",
-              "to_node_id": f"{row.node_id}_z{z2}",
+              "from_node_id": node_3d_id(row.node_id, z1),
+              "to_node_id": node_3d_id(row.node_id, z2),
               "dir_flag": 1,
               "length": dz,
               "free_speed": 4,
@@ -435,11 +485,9 @@ def convert_to_3d(network_name, input_dir):
   link_3d_df = pd.DataFrame(link_3d_rows)
   node_3d_df = pd.DataFrame(node_3d_rows)
 
-  node2d_to_3d = (
-    node_3d_df
-    .set_index("original_node_id")["node_id"]
-    .to_dict()
-  )
+  # Ground level only. set_index().to_dict() would keep the last altitude
+  # copy of each node, which is _z400, and pin every trip to that layer.
+  node2d_to_3d = ground_level_node_map(node_df["node_id"])
 
   output_dir = os.path.join(os.getcwd(), "data", "raw")
   os.makedirs(output_dir, exist_ok=True)

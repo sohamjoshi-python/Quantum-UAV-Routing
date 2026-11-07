@@ -126,9 +126,9 @@ def generate_qubo_pairwise(
     Qdict = defaultdict(float)
 
     def addQ(i, j, v):
-        Qdict[(i, j)] += float(v)
-        if i != j:
-            Qdict[(j, i)] += float(v)
+        # Upper triangle only. dimod adds (i, j) and (j, i).
+        a, b = (i, j) if i <= j else (j, i)
+        Qdict[(a, b)] += float(v)
 
     # Objective on the diagonal — same as generate_qubo step 4.
     for t in trip_vars:

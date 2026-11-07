@@ -712,12 +712,12 @@ def plot_service_quality(d_class, d_greedy, d_quant_sim, d_quant_real, figures_d
     ax.legend(fontsize=8)
     savefig(figures_dir / "11_avg_waiting_time.png")
 
-    # VMT
+    # Travel time (stored in the vmt column; the value is route time in seconds).
     plt.figure(figsize=(7, 5))
     ax = plt.gca()
-    ax.set_title("Requests vs VMT (mean ± SEM)")
+    ax.set_title("Requests vs Travel Time (mean ± SEM)")
     ax.set_xlabel("Number of Requests")
-    ax.set_ylabel("VMT")
+    ax.set_ylabel("Travel time (s)")
     ax.grid(alpha=0.25)
     for name, frame in series:
         if frame.empty or "vmt" not in frame.columns:

@@ -151,16 +151,14 @@ def generate_qubo(
         return idx[label]
 
     def addQ(i, j, v, store=None):
-        # store symmetric in dict (your downstream code sometimes assumes full dict)
+        # Upper triangle only (i <= j). dimod adds Q[i, j] and Q[j, i], so
+        # storing the full weight under both keys doubles every coupler.
+        a, b = (i, j) if i <= j else (j, i)
+        val = float(v)
         target = Qdict if store is None else store
-        target[(i, j)] += float(v)
-        if i != j:
-            target[(j, i)] += float(v)
+        target[(a, b)] += val
         if store is not None:
-            # also accumulate into the full Q
-            Qdict[(i, j)] += float(v)
-            if i != j:
-                Qdict[(j, i)] += float(v)
+            Qdict[(a, b)] += val
 
     def add_square_constraint(u, a, b, weight, request_id=None):
         """
@@ -266,6 +264,41 @@ def generate_qubo(
         Q[i, j] = v
     return Q, all_vars
 
+
+def upper_triangle_qubo(Q):
+    """One full-weight copy of each term, stored at i <= j.
+
+    dimod adds ``(i, j)`` and ``(j, i)``. A dict that stores the same full
+    coupler under both keys therefore doubles every off-diagonal. A mirrored
+    copy is dropped, not added. Diagonals are kept as stored.
+    """
+    if isinstance(Q, np.ndarray):
+        n = int(Q.shape[0])
+        out = {}
+        for i in range(n):
+            for j in range(i, n):
+                val = float(Q[i, j])
+                if val != 0.0:
+                    out[(i, j)] = val
+        return out
+
+    out = {}
+    mirrored = {}
+    for (i, j), raw in Q.items():
+        val = float(raw)
+        if val == 0.0:
+            continue
+        if i <= j:
+            out[(i, j)] = out.get((i, j), 0.0) + val
+        else:
+            key = (j, i)
+            mirrored[key] = mirrored.get(key, 0.0) + val
+    for key, val in mirrored.items():
+        if key not in out:
+            out[key] = val
+    return out
+
+
 import numpy as np
 from scipy.optimize import minimize
 import dimod
@@ -290,22 +323,20 @@ def solve_qubo_qiskit_real(Q, reps=2, max_iter=10, real=False, num_reads=1000, n
     - real=True:  Uses IBM Quantum Hardware (QAOA V2 Primitives)
     """
     # --- 1. Determine QUBO size ---
-    n = Q.shape[0] if isinstance(Q, np.ndarray) else max(max(k) for k in Q.keys()) + 1
+    if isinstance(Q, np.ndarray):
+        n = int(Q.shape[0])
+    elif Q:
+        n = max(max(i, j) for (i, j) in Q.keys()) + 1
+    else:
+        n = 0
+    # dimod adds both triangles. Pass each coupler once.
+    qubo = upper_triangle_qubo(Q)
 
     # ---------------------------------------------------------
     # MODE A: SIMULATED ANNEALING (LOCAL / TESTING)
     # ---------------------------------------------------------
     if not real:
         print(f"Mode: LOCAL SIMULATION (Simulated Annealing) | Size: {n} variables")
-
-        # Convert Q to dict format for dimod
-        if isinstance(Q, np.ndarray):
-            qubo = {}
-            for i in range(n):
-                for j in range(i, n):
-                    if Q[i, j] != 0: qubo[(i, j)] = Q[i, j]
-        else:
-            qubo = Q
 
         sampler = SimulatedAnnealingSampler()
         sampleset = sampler.sample_qubo(qubo, num_reads=num_reads, num_sweeps=num_sweeps)
@@ -324,15 +355,11 @@ def solve_qubo_qiskit_real(Q, reps=2, max_iter=10, real=False, num_reads=1000, n
     for i in range(n): qp.binary_var(str(i))
 
     linear, quadratic = {}, {}
-    if isinstance(Q, np.ndarray):
-        for i in range(n):
-            if Q[i, i] != 0: linear[str(i)] = Q[i, i]
-            for j in range(i + 1, n):
-                if Q[i, j] != 0: quadratic[(str(i), str(j))] = Q[i, j]
-    else:
-        for (i, j), val in Q.items():
-            if i == j: linear[str(i)] = val
-            else: quadratic[(str(i), str(j))] = val
+    for (i, j), val in qubo.items():
+        if i == j:
+            linear[str(i)] = val
+        else:
+            quadratic[(str(i), str(j))] = val
 
     qp.minimize(linear=linear, quadratic=quadratic)
     hamiltonian, offset = qp.to_ising()
@@ -412,8 +439,8 @@ if _ibm_token:
 
 def argmin_overlap(Q1, Q2, num_reads=500):
     sampler = SimulatedAnnealingSampler()
-    s1 = sampler.sample_qubo(Q1, num_reads=num_reads)
-    s2 = sampler.sample_qubo(Q2, num_reads=num_reads)
+    s1 = sampler.sample_qubo(upper_triangle_qubo(Q1), num_reads=num_reads)
+    s2 = sampler.sample_qubo(upper_triangle_qubo(Q2), num_reads=num_reads)
 
     E1_min = s1.first.energy
     E2_min = s2.first.energy
@@ -425,7 +452,7 @@ def argmin_overlap(Q1, Q2, num_reads=500):
 
 def energy_gap(Q, num_reads=200):
     sampler = SimulatedAnnealingSampler()
-    sampleset = sampler.sample_qubo(Q, num_reads=num_reads)
+    sampleset = sampler.sample_qubo(upper_triangle_qubo(Q), num_reads=num_reads)
 
     energies = sorted({rec.energy for rec in sampleset.data()})
     if len(energies) < 2:
@@ -456,6 +483,7 @@ def qubo_stats_from_dict(Qd):
 
     degrees = defaultdict(int)
     couplers = 0
+    seen_edges = set()
 
     for (i, j), v in Qd.items():
         if i > max_idx: max_idx = i
@@ -467,11 +495,15 @@ def qubo_stats_from_dict(Qd):
             if av < min_nz: min_nz = av
 
         if i != j and v != 0:
-            # count each undirected edge once
-            if i < j:
-                couplers += 1
-            degrees[i] += 1
-            degrees[j] += 1
+            # One undirected edge, whether the dict stores one triangle or both.
+            # Counting both used to report degree 8 for a true degree of 4.
+            a, b = (i, j) if i < j else (j, i)
+            if (a, b) in seen_edges:
+                continue
+            seen_edges.add((a, b))
+            couplers += 1
+            degrees[a] += 1
+            degrees[b] += 1
 
     n = max_idx + 1
     denom_edges = n * (n - 1) / 2
@@ -526,7 +558,7 @@ def condition_number(Q_dense, max_n=200):
 
 def energy_gap_fast(Q, num_reads=25):
     sampler = SimulatedAnnealingSampler()
-    sampleset = sampler.sample_qubo(Q, num_reads=num_reads)
+    sampleset = sampler.sample_qubo(upper_triangle_qubo(Q), num_reads=num_reads)
     energies = sorted({rec.energy for rec in sampleset.data()})
     return float(energies[1] - energies[0]) if len(energies) >= 2 else 0.0
 
@@ -535,19 +567,37 @@ def argmin_overlap_FAST_DISABLE(*args, **kwargs):
 
 def _qubo_dict_to_numpy(Qd, n=None):
     import numpy as np
+    qubo = upper_triangle_qubo(Qd)
     if n is None:
-        n = max(max(i, j) for (i, j) in Qd.keys()) + 1 if Qd else 0
+        n = max(max(i, j) for (i, j) in qubo.keys()) + 1 if qubo else 0
     Qm = np.zeros((n, n), dtype=float)
-    for (i, j), c in Qd.items():
-        Qm[i, j] += c
-        if i != j:
-            Qm[j, i] += c
+    for (i, j), c in qubo.items():
+        Qm[i, j] = c
     return Qm
 
 from scipy.optimize import linear_sum_assignment
 import time
 import numpy as np
 from collections import defaultdict
+
+
+def order_trips_by_decreasing_reward(
+    selected_trip_keys, trip_costs, ignore_cost, cost_alpha=1.0
+):
+    """Sort trips by w_t = ignore_cost*|t| - cost_alpha*trip_cost, high to low.
+
+    Conflict cleanup walks this order, so a higher-reward trip is kept ahead of
+    a lower-reward trip that shares a request. Equal rewards keep the incoming
+    order (variable-index order, when that is how the list was built).
+    """
+    ignore_cost = float(ignore_cost)
+    cost_alpha = float(cost_alpha)
+
+    def reward(tk):
+        return ignore_cost * len(tk) - cost_alpha * float(trip_costs[tk])
+
+    return sorted(selected_trip_keys, key=reward, reverse=True)
+
 
 def _save_per_request_rows(rows, csv_path):
     """Append per-request outcome rows to a side CSV (header written once).
@@ -655,10 +705,17 @@ def quantum_mwis_run(
 
     # ----------------------------
     # 4) Decode + conflict-free selection
+    #    Accepted in decreasing reward order (w_t), matching the paper.
     # ----------------------------
     t_decode_start = time.perf_counter()
     raw_selected_trips = [all_vars[i] for i, v in quantum_bitstring.items() if v == 1]
     selected_trip_keys = [tk for tk in raw_selected_trips if isinstance(tk, frozenset)]
+    selected_trip_keys = order_trips_by_decreasing_reward(
+        selected_trip_keys,
+        minimal_qubo_trip_costs,
+        ignore_costs,
+        cost_alpha,
+    )
 
     final_trips_list = []
     covered = set()
@@ -931,9 +988,8 @@ def generate_qubo_pairwise(
     Qdict = defaultdict(float)
 
     def addQ(i, j, v):
-        Qdict[(i, j)] += float(v)
-        if i != j:
-            Qdict[(j, i)] += float(v)
+        a, b = (i, j) if i <= j else (j, i)
+        Qdict[(a, b)] += float(v)
 
     # --- objective on diagonal (IDENTICAL to generate_qubo) ---
     for t in trip_vars:

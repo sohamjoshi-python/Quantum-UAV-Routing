@@ -1,6 +1,6 @@
 """
 Analyze embedding_results.csv (from embedding_analysis.py) into paper-ready
-deliverables, with HONEST handling of timeout-capped failures.
+deliverables, with handling of timeout-capped failures.
 
 Critical distinction this script enforces:
   minorminer is a heuristic. embed_success=0 can mean either
@@ -46,7 +46,7 @@ def classify(df: pd.DataFrame, budget: float, wall_frac: float) -> pd.DataFrame:
     def kind(r):
         if r["embed_success"] == 1:
             return "embedded"
-        # failure: timeout-capped or genuine?
+        # failure: timeout-capped (inconclusive) or genuine
         if pd.notna(r["embed_time_s"]) and r["embed_time_s"] >= wall_frac * budget:
             return "timeout_inconclusive"
         return "genuine_fail"
@@ -153,7 +153,7 @@ def write_frontier(df: pd.DataFrame, budget: float, out_path: Path):
             lines.append(f"  n={int(n):>4}: " + ", ".join(tag))
         lines.append("")
 
-    # honest one-line summary of the frontier per encoding
+    # one-line summary of the frontier per encoding
     lines.append("SUMMARY")
     lines.append("-" * 40)
     for enc in sorted(df["encoding"].unique()):

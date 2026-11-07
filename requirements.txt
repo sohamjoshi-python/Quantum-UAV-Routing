@@ -14,3 +14,4 @@ qiskit-ibm-runtime
 qiskit-optimization
 dwave_networkx
 minorminer
+aiohttp>=3.14.4

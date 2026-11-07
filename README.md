@@ -27,7 +27,9 @@ quantum hardware.
 ## Pipeline overview
 
 1. Download the GMNS+ Phoenix network and lift it into 3D using discrete altitude
-   levels (0, 50, 100, 200, 400 ft).
+   levels (0, 50, 100, 200, 400 ft). Pickups, drop-offs, and vehicle starts are
+   placed on the ground layer (`_z0`). Shortest paths may climb and cruise at any
+   of the five altitudes.
 2. Compute shortest-path travel times via bidirectional Dijkstra.
 3. Generate randomized requests and vehicles (fixed seeds) for each
    vehicle–request configuration.

@@ -159,11 +159,18 @@ def load_completed(csv_path: Path) -> set:
 
 def append_row(row: dict, csv_path: Path):
     csv_path.parent.mkdir(parents=True, exist_ok=True)
-    df = pd.DataFrame([row])
-    if csv_path.exists():
-        df.to_csv(csv_path, mode="a", header=False, index=False)
+    # pandas appends at EOF and does not insert a newline if the previous
+    # write left the file without one, which glues two rows onto one line.
+    if csv_path.exists() and csv_path.stat().st_size > 0:
+        with csv_path.open("rb+") as handle:
+            handle.seek(-1, os.SEEK_END)
+            if handle.read(1) not in (b"\n", b"\r"):
+                handle.write(b"\n")
+        pd.DataFrame([row]).to_csv(
+            csv_path, mode="a", header=False, index=False, lineterminator="\n"
+        )
     else:
-        df.to_csv(csv_path, index=False)
+        pd.DataFrame([row]).to_csv(csv_path, index=False, lineterminator="\n")
 
 
 def summarize(full_csv: Path, summary_csv: Path):

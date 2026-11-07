@@ -25,6 +25,7 @@ from quantum_uav_routing.network.load_network import (
     clone_dataset_repo,
     convert_to_3d,
     create_graph,
+    ensure_ground_level_mapping,
     parse_graph,
 )
 import quantum_uav_routing.network.shortest_path as sp_mod
@@ -171,8 +172,7 @@ def _load_or_build_3d_network(network_name: str):
     link_3d_df = pd.read_csv(LINK_3D_PATH, low_memory=False)
     link_3d_df["length"] = link_3d_df["length"].fillna(1e-3).replace(0, 1e-3)
 
-    mapping_df = pd.read_csv(MAPPING_PATH)
-    node2d_to_3d = dict(zip(mapping_df["original_node_id"], mapping_df["node_3d_id"]))
+    node2d_to_3d = ensure_ground_level_mapping(node_df["node_id"], MAPPING_PATH)
 
     return node_df, node_3d_df, link_3d_df, node2d_to_3d
 

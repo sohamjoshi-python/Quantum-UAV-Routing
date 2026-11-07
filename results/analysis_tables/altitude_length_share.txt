@@ -1,0 +1,6 @@
+Paths: 6975 request origin-destination shortest paths.
+Paths that leave the ground layer: 6906 (99.0%).
+Total length: 12316326.2 m (horizontal 10842923.0 m, vertical 1473403.2 m).
+Share of path length: 0 ft 0.0%, 50 ft 0.4%, 100 ft 1.1%, 200 ft 3.4%, 400 ft 83.1%; climb and descent 12.0%.
+Vertical length uses 0.3048 m per foot. Horizontal length is the GMNS link length.
+Missing hops: 0.
